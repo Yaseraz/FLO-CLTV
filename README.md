@@ -1,3 +1,5 @@
+![CRM](https://user-images.githubusercontent.com/122373044/225986650-c81e1e32-ef2c-4d30-a18f-59bf96fd3a92.png)
+
 # Story of Dataset
 
 This Online Retail II data set contains all the transactions occurring for a UK-based and registered,
@@ -7,12 +9,17 @@ Many customers of the company are wholesalers.
 Content
 Attribute Information:
 
-* InvoiceNo: Invoice number. Nominal. A 6-digit integral number uniquely assigned to each transaction.
-* If this code starts with the letter 'c', it indicates a cancellation.
-* StockCode: Product (item) code. Nominal. A 5-digit integral number uniquely assigned to each distinct product.
-* Description: Product (item) name. Nominal.
-* Quantity: The quantities of each product (item) per transaction. Numeric.
-* InvoiceDate: Invoice date and time. Numeric. The day and time when a transaction was generated.
-* UnitPrice: Unit price. Numeric. Product price per unit in sterling (Â£).
-* CustomerID: Customer number. Nominal. A 5-digit integral number uniquely assigned to each customer.
-* Country: Country name. Nominal. The name of the country where a customer resides.
+| Column Name                          | Description                                                                                     |
+|--------------------------------------|-------------------------------------------------------------------------------------------------|
+| master_id                            | Unique client number                                                                             |
+| order_channel                        | Which channel of the shopping platform is used (Android, ios, Desktop, Mobile, Offline)         |
+| last_order_channel                   | The channel where the last purchase was made                                                   |
+| first_order_date                     | The date of the customer's first purchase                                                       |
+| last_order_date                      | The date of the last purchase made by the customer                                               |
+| last_order_date_online               | The date of the last purchase made by the customer on the online platform                       |
+| last_order_date_offline              | The date of the last purchase made by the customer on the offline platform                      |
+| order_num_total_ever_online          | The total number of purchases made by the customer on the online platform                      |
+| order_num_total_ever_offline         | Total number of purchases made by the customer offline                                          |
+| customer_value_total_ever_offline    | The total price paid by the customer for offline purchases                                      |
+| customer_value_total_ever_online     | The total price paid by the customer for their online shopping                                  |
+| interested_in_categories_12          | List of categories the customer has purchased from in the last 12 months                        |
