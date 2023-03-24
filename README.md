@@ -1,5 +1,8 @@
 ![CRM](https://user-images.githubusercontent.com/122373044/225986650-c81e1e32-ef2c-4d30-a18f-59bf96fd3a92.png)
 
+![AAYQAQSOAAgAAQAAAAAAAB-zrMZEDXI2T62PSuT6kpB6qg](https://user-images.githubusercontent.com/122373044/227516807-8a9e01c1-fe15-460f-bdeb-fd8c56001fd6.png)
+
+
 # Story of Dataset
 
 This Online Retail II data set contains all the transactions occurring for a UK-based and registered,
