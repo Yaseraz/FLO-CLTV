@@ -1,133 +1,228 @@
-import pandas as pd
-import matplotlib.pyplot as plt
+##############################################################
+# Flo CLTV Prediction
+##############################################################
+
+
+############################################################################
+# Preparing the data
+############################################################################
+
+#Libraries
 import datetime as dt
-import seaborn as sns
+import pandas as pd
 from lifetimes import BetaGeoFitter
 from lifetimes import GammaGammaFitter
 from lifetimes.plotting import plot_period_transactions
-from sklearn.preprocessing import MinMaxScaler
 
 pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+pd.set_option('display.float_format', lambda x: '%.4f' % x)
+from sklearn.preprocessing import MinMaxScaler
 
-# pd.set_option('display.max_rows', None)
 
-pd.set_option('display.float_format', lambda x: '%.5f' % x)
+# Import Dataset
+df_=pd.read_csv("PycharmProjects/scientificProject/flo_data_20k.csv", sep=",")
+df=df_.copy()
 
-df_1 = pd.read_excel("C:\\Users\\User\Desktop\Ödev\datasets\online_retail_II.xlsx", sheet_name="Year 2009-2010")
-df_2 = pd.read_excel("C:\\Users\\User\Desktop\Ödev\datasets\online_retail_II.xlsx", sheet_name="Year 2010-2011")
-df1 = df_1.copy()
-df2 = df_2.copy()
-
-#lets concat our datasets
-
-df1["InvoiceDate"].max()
-df2["InvoiceDate"].min()
-
-#There some duplicated transactions
-
-df2=df2[df2["InvoiceDate"] > df1["InvoiceDate"].max()]
-#Now you can't
-
-df2["InvoiceDate"].min()
-
-#Lets concantrate them
-df = pd.concat([df1 , df2], ignore_index=True)
-df.info()
-
-#EDA and Data Preparation
-
-def check_df(data,head=5):
-    print('#' * 40 + 'Shape' + '#' * 40)
-    print(data.shape)
-    print('#' * 40 + "NaN" + "#" * 40)
-    print(data.isnull().sum())
-    print('#'*40 + 'info' + '#'*40)
-    print(data.info())
-    print('#'*40 + "Describe" + '#'*40)
-    print(data.describe().T)
-    print('#' * 40 + "HEAD" + '#' * 40)
-    print(data.head(head))
+# create a function called check_df to examine the data in general.
+def check_df(dataframe, head=5):
+    print("##################### Shape #####################")
+    print(dataframe.shape)
+    print("##################### Types #####################")
+    print(dataframe.dtypes)
+    print("##################### Head #####################")
+    print(dataframe.head(head))
+    print("##################### Tail #####################")
+    print(dataframe.tail(head))
+    print("##################### NA #####################")
+    print(dataframe.isnull().sum())
+    print("##################### Quantiles #####################")
+    print(dataframe.describe().T)
 
 check_df(df)
 
-#As you can see with te check_df function Quantity and Price has negative values
 
-df = df[(df["Quantity"] > 0)]
-df = df[df["Price"] > 0]
+# Creating two functions for suppressing outliers
+def outlier_thresholds(dataframe,variable):
+    Q1=dataframe[variable].quantile(0.01)
+    Q3=dataframe[variable].quantile(0.99)
+    IQR=Q3-Q1
+    low_limit=Q1-IQR*1.5
+    up_limit=Q3+IQR*1.5
+    return low_limit,up_limit
 
-#And we don't need to use canceled Invoices
+# Note: When calculating cltv(freq.,t,monetary,recency) values must be int so Low limit and up limit must be round
+def replace_with_thresholds(dataframe,variable):
+    low_limit, up_limit = outlier_thresholds(dataframe,variable)
+    dataframe.loc[(dataframe[variable] < low_limit), variable] = low_limit.round()
+    dataframe.loc[(dataframe[variable] > up_limit), variable] = up_limit.round()
 
-df = df[~df["Invoice"].str.contains("C", na=False)]
-df.dropna(inplace=True)
-df.describe().T
+# Set the list (integer variables) for suppressing outliers
 
-# Data have extreme values
+l=["order_num_total_ever_online","order_num_total_ever_offline","customer_value_total_ever_offline","customer_value_total_ever_online"]
 
-def df_extreme(data=pd.DataFrame, variable=str):
-    q1 = data[variable].quantile(0.01)
-    q3 = data[variable].quantile(0.99)
-    IQR = q3 - q1
-    up_limit = q3 + 1.5 * IQR
-    low_limit = q1 - 1.5 * IQR
-    return low_limit , up_limit
+for i in l:
+    replace_with_thresholds(df,i)
 
-def replace_extreme(data=pd.DataFrame, variable=str):
-    low_limit, up_limit = df_extreme(data, variable)
-    # data.loc[(data[variable] < low_limit)][variable] = low_limit
-    data.loc[(data[variable] > up_limit),variable] = up_limit
-
-replace_extreme(df, "Price")
-replace_extreme(df, "Quantity")
-df.describe().T
-df.info()
-
-#So we get rid of some dirt lets continue to calculate RFM metrics
-
-df["total_price"] = df["Price"] * df["Quantity"]
-
-df["InvoiceDate"].max()
-case_date = dt.datetime(2011, 12, 11)
-rfm = pd.DataFrame
-rfm = df.groupby("Customer ID").agg({"Quantity": lambda x: x.count(),
-                                     "total_price": lambda x: x.sum()})
-
-rfm.head()
-rfm.columns = ['total_transaction', 'total_price']
-
-# Average Order Value (total_price/total_transaction)
-
-rfm["AOV"] = rfm["total_price"]/rfm['total_transaction']
-
-#Purchase Freq  (total_transaction/number of customers)
-
-rfm["PurchFreq"] = rfm['total_transaction']/rfm.shape[0]
-
-#Repeat Rate
-
-repeat_rate = rfm[rfm["total_transaction"] > 1].shape[0]/rfm.shape[0]
-
-ChurnRate = 1-repeat_rate
-
-#Profit Margin %10
-
-rfm["Profit_Margin"] = rfm["total_price"]/10
-
-#Customer Value= AvgOrdVal*PurcFreq
-
-rfm["Customer_Value"] = rfm["AOV"] * rfm["PurchFreq"]
-
-#CLTV (CustVal/ChurnRate)*ProfMargn
-
-rfm["CLV"] = ((rfm["total_price"]/rfm['total_transaction'] * rfm['total_transaction']/rfm.shape[0])/(1-(rfm[rfm["total_transaction"] > 1].shape[0]/rfm.shape[0]))) * (rfm["total_price"]/10)
-rfm["CLV"] = (rfm["Customer_Value"]/ChurnRate)*rfm["Profit_Margin"]
-
-#Segmentation
-rfm.sort_values(by="CLV", ascending=False).head()
-rfm.sort_values(by="CLV", ascending=False).tail()
-
-rfm["segment"] = pd.qcut(rfm["CLV"], 4 , labels=["D", "C", "B", "A"])
-rfm.groupby("segment").agg({"count", "mean", "sum"})
-
-rfm.to_csv("cltv_c.csv")
+# Create new variables for each one customer's spending and purchasing
+df["total_order"]=df["order_num_total_ever_offline"] + df["order_num_total_ever_offline"]
+df["total_value"]=df["customer_value_total_ever_online"] + df["customer_value_total_ever_offline"]
 
 
+############################################################################
+# Creating CLTV Data Structure
+############################################################################
+
+# Changing the type of variable as a date
+date_columns = df.columns[df.columns.str.contains("date")]
+df[date_columns]=df[date_columns].apply(pd.to_datetime)
+df[date_columns].info()
+
+# Determine the analysis date.
+today_date=dt.datetime(2021,6,1)
+
+# Create Cltv
+cltv=pd.DataFrame()
+cltv["CustomerId"]=df["master_id"]
+cltv["recency"] = ((df["last_order_date"]-df["first_order_date"]).astype("timedelta64[D]"))/7
+cltv["T"]=((today_date-df["first_order_date"]).astype("timedelta64[D]"))/7
+cltv["frequency"]=df["total_order"]
+cltv["monetary"]=df["total_value"]/df["total_order"]
+cltv.head()
+
+############################################################################
+# Establishing the BG/NBD,gamma-gamma model and calculating Cltv
+############################################################################
+
+# BG-NBD Model
+
+bgf=BetaGeoFitter(penalizer_coef=0.001)
+
+bgf.fit(cltv["frequency"],cltv["recency"],cltv["T"])
+
+
+cltv["exp_sales_3_month"] = bgf.predict(4*3,
+            cltv["frequency"],
+            cltv["recency"],
+            cltv["T"])
+
+cltv["exp_sales_6_month"] = bgf.predict(4*6,
+                                       cltv["frequency"],
+                                       cltv["recency"],
+                                       cltv["T"])
+
+
+#Gamma-Gamma Model
+ggf=GammaGammaFitter(penalizer_coef=0.01)
+
+ggf.fit(cltv["frequency"],cltv["monetary"])
+
+
+cltv["expected_average_profit"]=ggf.conditional_expected_average_profit(cltv["frequency"],cltv["monetary"])
+
+cltv["exp_profit_6month"]=ggf.conditional_expected_average_profit(cltv["frequency"],cltv["monetary"])
+
+cltv["cltv"]= ggf.customer_lifetime_value(bgf,
+                                 cltv["frequency"],
+                                 cltv["recency"],
+                                 cltv["T"],
+                                 cltv["monetary"],
+                                 time=6,
+                                 freq="M",
+                                 discount_rate=0.01)
+
+cltv["cltv"].sort_values(ascending=False).head(20)
+
+
+
+cltv["segment"]=pd.qcut(cltv["cltv"],4,labels=["D","C","B","A"])
+
+new_group = cltv.loc[(cltv["segment"]=="A") | (cltv["segment"] == "B")]
+
+new_group.to_csv("A and B customers")
+
+############################################################################
+# Task 5: Functionalizing the whole process
+############################################################################
+
+def outlier_thresholds(dataframe,variable):
+    Q1=dataframe[variable].quantile(0.01)
+    Q3=dataframe[variable].quantile(0.99)
+    IQR=Q3-Q1
+    low_limit=Q1-IQR*1.5
+    up_limit=Q3+IQR*1.5
+    return low_limit,up_limit
+
+
+def replace_with_thresholds(dataframe,variable):
+    low_limit, up_limit = outlier_thresholds(dataframe,variable)
+    dataframe.loc[(dataframe[variable] < low_limit), variable] = low_limit.round()
+    dataframe.loc[(dataframe[variable] > up_limit), variable] = up_limit.round()
+
+
+def create_cltv(dataframe,csv=False):
+    # Data prep
+    l = ["order_num_total_ever_online", "order_num_total_ever_offline", "customer_value_total_ever_offline",
+         "customer_value_total_ever_online"]
+    for i in l:
+       replace_with_thresholds(df, i)
+
+    df["total_order"] = df["order_num_total_ever_offline"] + df["order_num_total_ever_offline"]
+    df["total_value"] = df["customer_value_total_ever_online"] + df["customer_value_total_ever_offline"]
+
+    date_columns = df.columns[df.columns.str.contains("date")]
+    df[date_columns] = df[date_columns].apply(pd.to_datetime)
+    today_date = dt.datetime(2021, 6, 1)
+
+    # Creating CLTV Data Structure
+    cltv = pd.DataFrame()
+    cltv["CustomerId"] = df["master_id"]
+    cltv["recency"] = ((df["last_order_date"] - df["first_order_date"]).astype("timedelta64[D]")) / 7
+    cltv["T"] = ((today_date - df["first_order_date"]).astype("timedelta64[D]")) / 7
+    cltv["frequency"] = df["total_order"]
+    cltv["monetary"] = df["total_value"] / df["total_order"]
+
+    # BG-NBD Model
+    bgf = BetaGeoFitter(penalizer_coef=0.001)
+    bgf.fit(cltv["frequency"], cltv["recency"], cltv["T"])
+
+    cltv["exp_sales_3_month"] = bgf.predict(4 * 3,
+                                            cltv["frequency"],
+                                            cltv["recency"],
+                                            cltv["T"])
+
+    cltv["exp_sales_6_month"] = bgf.predict(4 * 6,
+                                            cltv["frequency"],
+                                            cltv["recency"],
+                                            cltv["T"])
+
+    # Gamma-Gamma Model
+    ggf = GammaGammaFitter(penalizer_coef=0.01)
+
+    ggf.fit(cltv["frequency"], cltv["monetary"])
+
+    cltv["expected_average_profit"] = ggf.conditional_expected_average_profit(cltv["frequency"], cltv["monetary"])
+
+    cltv["exp_profit_6month"] = ggf.conditional_expected_average_profit(cltv["frequency"], cltv["monetary"])
+
+    cltv["cltv"] = ggf.customer_lifetime_value(bgf,
+                                               cltv["frequency"],
+                                               cltv["recency"],
+                                               cltv["T"],
+                                               cltv["monetary"],
+                                               time=6,
+                                               freq="M",
+                                               discount_rate=0.01)
+    # Create segment by Cltv
+    cltv["segment"] = pd.qcut(cltv["cltv"], 4, labels=["D", "C", "B", "A"])
+    new_group = cltv.loc[(cltv["segment"] == "A") | (cltv["segment"] == "B")]
+
+    if csv:
+        new_group.to_csv("A  and B customers")
+
+    return cltv,new_group
+
+
+df=df_.copy()
+
+create_cltv(df)
