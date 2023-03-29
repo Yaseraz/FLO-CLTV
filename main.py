@@ -25,19 +25,36 @@ df_=pd.read_csv("PycharmProjects/scientificProject/flo_data_20k.csv", sep=",")
 df=df_.copy()
 
 # create a function called check_df to examine the data in general.
-def check_df(dataframe, head=5):
-    print("##################### Shape #####################")
-    print(dataframe.shape)
-    print("##################### Types #####################")
-    print(dataframe.dtypes)
-    print("##################### Head #####################")
-    print(dataframe.head(head))
-    print("##################### Tail #####################")
-    print(dataframe.tail(head))
-    print("##################### NA #####################")
-    print(dataframe.isnull().sum())
-    print("##################### Quantiles #####################")
-    print(dataframe.describe().T)
+def check_df(dataframe, shape=True, columns=True, info=True, na=True, desc=True):
+    """
+    This function checks DataFrame's Descriptions
+
+    :param dataframe: A pandas dataframe
+    :param shape: checks Dataframe's Shape
+    :param columns: Prints Columns Names
+    :param info: Prints Columns types
+    :param na: Count and prints NaN values in DataFrame
+    :param desc: Prints DataFrame's Descriptions
+            like min, max, first, second, third quantile, Variance and Mean values
+    :return: Data frame's Shape,
+            Names of DataFrame's columns, DataFrame's columns Type,
+            how many NA values in DataFrame, Descriptive Stats
+    """
+
+    outputs = []
+    if shape:
+        outputs.append(('Shape', dataframe.shape))
+    if columns:
+        outputs.append(('Columns', dataframe.columns))
+    if info:
+        outputs.append(('Types', dataframe.dtypes))
+    if na:
+        outputs.append(('NA', dataframe.isnull().sum()))
+    if desc:
+        outputs.append(('Descriptive', dataframe.describe().T))
+    for output in outputs:
+        print(15 * "#", output[0], 15 * "#")
+        print(output[1], "\n")
 
 check_df(df)
 
