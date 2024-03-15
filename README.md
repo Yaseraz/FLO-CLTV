@@ -1,12 +1,6 @@
 ![CRM](https://user-images.githubusercontent.com/122373044/225986650-c81e1e32-ef2c-4d30-a18f-59bf96fd3a92.png)
 
 
-# Story of Dataset
-
-This Online Retail II data set contains all the transactions occurring for a UK-based and registered,
-non-store online retail between 01/12/2009 and 09/12/2011.The company mainly sells unique all-occasion gift-ware.
-Many customers of the company are wholesalers.
-
 Content
 Attribute Information:
 
